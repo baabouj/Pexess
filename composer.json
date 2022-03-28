@@ -1,0 +1,19 @@
+{
+    "name": "baabouj/pexess",
+    "description": "a lightweight PHP framework",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Pexess\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Omar Baabouj",
+            "email": "baabouj.dev@gmail.com"
+        }
+    ],
+    "require": {
+      "ext-pdo": "*"
+    }
+}
