@@ -8,20 +8,26 @@ class Database
 
     private \PDOStatement|false $statement;
 
-    private static ?Database $db = null;
+    private static ?Database $instance = null;
 
     private function __construct()
     {
-        $this->pdo = new \PDO($_ENV["DB_DSN"], $_ENV["DB_USER"], $_ENV["DB_PASSWORD"]);
+//        $this->pdo = new \PDO($_ENV["DB_DSN"], $_ENV["DB_USER"], $_ENV["DB_PASSWORD"]);
+        $this->pdo = new \PDO('mysql:host=localhost;dbname=dev', 'root', '');
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+    }
+
+    public static function instance(): Database
+    {
+        if (!self::$instance) {
+            self::$instance = new Database();
+        }
+        return self::$instance;
     }
 
     public static function from($table): QueryBuilder
     {
-        if (!self::$db) {
-            self::$db = new Database();
-        }
-        return new QueryBuilder($table, self::$db);
+        return new QueryBuilder($table);
     }
 
     public function query($sql)
