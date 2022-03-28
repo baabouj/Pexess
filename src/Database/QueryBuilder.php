@@ -4,11 +4,13 @@ namespace Pexess\Database;
 
 class QueryBuilder
 {
-    public function __construct(
-        private string $table,
-        private Database $db
-    )
+    private string $table;
+        private Database $db;
+
+    public function __construct($table)
     {
+        $this->db = Database::instance();
+        $this->table = $table;
     }
 
     public function create(array $options): bool
