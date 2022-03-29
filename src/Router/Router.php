@@ -12,7 +12,7 @@ class Router
         "*"=>[] // Global middlewares
     ];
 
-    protected ?\Closure $stack = null;
+    protected \Closure|array|null $stack = null;
 
     public function get(string $url, \Closure|array $callback)
     {
@@ -47,7 +47,7 @@ class Router
         }
     }
 
-    public function apply(callable ...$middlewares)
+    public function apply(callable|string ...$middlewares)
     {
          array_push($this->middlewares["*"],...$middlewares);
     }

@@ -47,7 +47,7 @@ class Route
         return $this;
     }
 
-    public function apply(callable ...$middlewares)
+    public function apply(callable|string ...$middlewares)
     {
         foreach ($middlewares as $middleware) {
             Pexess::$Application->middlewares[$this->route][] = $middleware;

@@ -12,7 +12,7 @@ class Pexess extends Router
     private Response $response;
 
     public static ?Pexess $Application = null;
-    public $routeParams;
+    public array $routeParams;
 
     private function __construct()
     {
@@ -65,6 +65,7 @@ class Pexess extends Router
         foreach (array_reverse($this->middlewares["*"]) as $middleware) {
             $next = $this->stack;
             $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
+                if (is_string($middleware)) $middleware = [new $middleware, "handler"];
                 return call_user_func($middleware, $req, $res, $next);
             };
         }
@@ -75,6 +76,7 @@ class Pexess extends Router
         foreach (array_reverse($this->middlewares[$this->request->url()] ?? []) as $middleware) {
             $next = $this->stack;
             $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
+                if (is_string($middleware)) $middleware = [new $middleware, "handler"];
                 return call_user_func($middleware, $req, $res, $next);
             };
         }
@@ -115,6 +117,7 @@ class Pexess extends Router
         $handler = $this->getRouteHandler();
 
         if ($handler) {
+            if (is_array($handler)) $handler[0] = new $handler[0];
             $this->stack = $handler;
             $this->applyMiddlewares();
             call_user_func($this->stack, $this->request, $this->response);
