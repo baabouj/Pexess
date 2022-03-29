@@ -2,6 +2,8 @@
 
 namespace Pexess\Http;
 
+use Pexess\Pexess;
+
 class Request
 {
     public function url(): string
@@ -28,6 +30,11 @@ class Request
     public function query(): array
     {
         return $_GET;
+    }
+
+    public function params(): array
+    {
+        return Pexess::$Application->routeParams ?? [];
     }
 
     public function headers(): bool|array
