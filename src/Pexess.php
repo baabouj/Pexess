@@ -11,7 +11,7 @@ class Pexess extends Router
     private Request $request;
     private Response $response;
 
-    public static ?Pexess $Application = null;
+    private static ?Pexess $Application = null;
     public array $routeParams;
 
     private function __construct()

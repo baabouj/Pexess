@@ -2,14 +2,11 @@
 
 namespace Pexess\Router;
 
-use Pexess\Http\Request;
-use Pexess\Http\Response;
-
 class Router
 {
     public array $routes = [];
     public array $middlewares = [
-        "*"=>[] // Global middlewares
+        "*" => [] // Global middlewares
     ];
 
     protected \Closure|array|null $stack = null;
@@ -34,21 +31,23 @@ class Router
         $this->routes[$url]['post'] = $callback;
     }
 
-    public function route(string $route) : Route
+    public function route(string $route): Route
     {
-        return new Route($route);
+        return new Route($route, $this);
     }
 
-    public function group(string $route,Router $router)
+    public function group(string $route, Router $router)
     {
         foreach ($router->routes as $path => $handler) {
             $this->routes[rtrim($route . $path, '/')] = $handler;
-            $this->middlewares[rtrim($route . $path, '/')] = [...$router->middlewares["*"]];
+        }
+        foreach ($router->middlewares as $path => $middlewares) {
+            $this->middlewares[rtrim($route . $path, '/')] = [...$router->middlewares["*"], ...$middlewares];
         }
     }
 
     public function apply(callable|string ...$middlewares)
     {
-         array_push($this->middlewares["*"],...$middlewares);
+        array_push($this->middlewares["*"], ...$middlewares);
     }
 }
