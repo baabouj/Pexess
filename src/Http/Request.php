@@ -3,6 +3,7 @@
 namespace Pexess\Http;
 
 use Pexess\Pexess;
+use Pexess\Validator\Validator;
 
 class Request
 {
@@ -33,7 +34,12 @@ class Request
 
     public function query(): array
     {
-        return filter_input_array(INPUT_GET, FILTER_SANITIZE_SPECIAL_CHARS);
+        return filter_input_array(INPUT_GET, FILTER_SANITIZE_SPECIAL_CHARS) ?? [];
+    }
+
+    public function validate(array $rules): bool|array
+    {
+        return Validator::validate(array_merge($this->query(), $this->body()), $rules);
     }
 
     public function params(): array
