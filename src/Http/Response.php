@@ -21,6 +21,16 @@ class Response
         exit($message);
     }
 
+    /**
+     * Exit with an error
+     * @throws \Exception
+     */
+    public function quit(int $status_code, string $message ="")
+    {
+        $this->status($status_code);
+        throw new \Exception($message,$status_code);
+    }
+
     public function redirect(string $url): void
     {
         header("Location: $url");
