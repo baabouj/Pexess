@@ -24,6 +24,9 @@ class JWT
     public static function verify(string $token, string $key): array|false
     {
         $token = explode(".", $token);
+        if (count($token) != 3){
+            return false;
+        }
         $payload = json_decode(self::base64url_decode($token[1]),true);
         $signature = hash_hmac('sha256', $token[0] . "." . $token[1], $key, true);
 
