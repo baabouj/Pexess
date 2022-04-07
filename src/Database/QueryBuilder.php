@@ -188,12 +188,24 @@ class QueryBuilder
                             $binders[$attr . "_" . "eq"] = $value;
                             break;
                         }
-//                        case "contains":
-//                        {
-//                            $whereQuery[] = "$attr LIKE '%:$attr" . "_" . "contains%'";
-//                            $binders[$attr . "_" . "contains"] = $value;
-//                            break;
-//                        }
+                        case "contains":
+                        {
+                            $whereQuery[] = "$attr LIKE :$attr" . "_" . "contains";
+                            $binders[$attr . "_" . "contains"] = '%' . $value . '%';
+                            break;
+                        }
+                        case "startsWith":
+                        {
+                            $whereQuery[] = "$attr LIKE :$attr" . "_" . "startsWith";
+                            $binders[$attr . "_" . "startsWith"] = $value . '%';
+                            break;
+                        }
+                        case "endsWith":
+                        {
+                            $whereQuery[] = "$attr LIKE :$attr" . "_" . "endsWith";
+                            $binders[$attr . "_" . "endsWith"] = '%' . $value;
+                            break;
+                        }
                         default:
                         {
                             break;
@@ -205,9 +217,6 @@ class QueryBuilder
                 $binders[$attr] = $where[$attr];
             }
         }
-//        echo "<pre>";
-//        var_dump($binders);
-//        var_dump(implode(" AND ", $whereQuery));
 
         $sql = implode(" AND ", $whereQuery);
         return "WHERE $sql ";
