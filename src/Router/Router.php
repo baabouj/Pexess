@@ -23,12 +23,12 @@ class Router
 
     public function put(string $url, \Closure|array $callback)
     {
-        $this->routes[$url]['post'] = $callback;
+        $this->routes[$url]['put'] = $callback;
     }
 
     public function delete(string $url, \Closure|array $callback)
     {
-        $this->routes[$url]['post'] = $callback;
+        $this->routes[$url]['delete'] = $callback;
     }
 
     public function route(string $route): Route
