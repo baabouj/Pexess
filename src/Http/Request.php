@@ -3,6 +3,7 @@
 namespace Pexess\Http;
 
 use Pexess\Pexess;
+use Pexess\Validator\Validator;
 
 class Request
 {
@@ -23,18 +24,27 @@ class Request
 
     public function body(): array
     {
-        $body = file_get_contents("php://input");
-        return json_decode($body, true) ?? [];
+        $body = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?? [];
+        $json = json_decode(file_get_contents('php://input'), true);
+        if ($json ?? false) {
+            $body = filter_var_array($json, FILTER_SANITIZE_SPECIAL_CHARS);
+        }
+        return $body;
     }
 
     public function query(): array
     {
-        return $_GET;
+        return filter_input_array(INPUT_GET, FILTER_SANITIZE_SPECIAL_CHARS) ?? [];
+    }
+
+    public function validate(array $rules): bool|array
+    {
+        return Validator::validate(array_merge($this->query(), $this->body()), $rules);
     }
 
     public function params(): array
     {
-        return Pexess::$Application->routeParams ?? [];
+        return Pexess::$routeParams ?? [];
     }
 
     public function headers(): bool|array

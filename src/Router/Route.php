@@ -6,8 +6,10 @@ use Pexess\Pexess;
 
 class Route
 {
+
     public function __construct(
-        private string $route
+        private string $route,
+        private Router $router
     )
     {
     }
@@ -19,38 +21,38 @@ class Route
 
     public function get($handler): Route
     {
-        Pexess::$Application->routes[$this->route]['get'] = $handler;
+        $this->router->routes[$this->route]['get'] = $handler;
         return $this;
     }
 
     public function post($handler): Route
     {
-        Pexess::$Application->routes[$this->route]['post'] = $handler;
+        $this->router->routes[$this->route]['post'] = $handler;
         return $this;
     }
 
     public function put($handler): Route
     {
-        Pexess::$Application->routes[$this->route]['put'] = $handler;
+        $this->router->routes[$this->route]['put'] = $handler;
         return $this;
     }
 
     public function patch($handler): Route
     {
-        Pexess::$Application->routes[$this->route]['patch'] = $handler;
+        $this->router->routes[$this->route]['patch'] = $handler;
         return $this;
     }
 
     public function delete($handler): Route
     {
-        Pexess::$Application->routes[$this->route]['delete'] = $handler;
+        $this->router->routes[$this->route]['delete'] = $handler;
         return $this;
     }
 
     public function apply(callable|string ...$middlewares)
     {
         foreach ($middlewares as $middleware) {
-            Pexess::$Application->middlewares[$this->route][] = $middleware;
+            $this->router->middlewares[$this->route][] = $middleware;
         }
     }
 }

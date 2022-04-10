@@ -2,6 +2,8 @@
 
 namespace Pexess;
 
+use Pexess\exceptions\MethodNotAllowedException;
+use Pexess\exceptions\NotFoundException;
 use Pexess\Http\Request;
 use Pexess\Http\Response;
 use Pexess\Router\Router;
@@ -11,8 +13,10 @@ class Pexess extends Router
     private Request $request;
     private Response $response;
 
-    public static ?Pexess $Application = null;
-    public array $routeParams;
+    private static ?Pexess $Application = null;
+    public static array $routeParams;
+
+    private array $errorHandlers = [];
 
     private function __construct()
     {
@@ -82,10 +86,18 @@ class Pexess extends Router
         }
     }
 
+    /**
+     * @throws MethodNotAllowedException
+     */
     private function getRouteHandler()
     {
-        $handler = $this->routes[$this->request->url()][$this->request->method()] ?? false;
-        if ($handler) return $handler;
+        $route = $this->routes[$this->request->url()] ?? false;
+        if ($route) {
+            $handler = $route[$this->request->method()] ?? false;
+            if ($handler) return $handler;
+            throw new MethodNotAllowedException();
+        }
+
         foreach ($this->routes as $route => $actions) {
             $routeUrl = $route;
             preg_match_all('/{[^}]+}/', $route, $keys);
@@ -100,8 +112,9 @@ class Pexess extends Router
                     $params[trim($keys[0][$index], '{}')] = $param;
                 }
                 if (empty($params)) continue;
-                $this->routeParams = $params;
+                self::$routeParams = $params;
                 $handler = $actions[$this->request->method()];
+                if (!$handler) throw new MethodNotAllowedException();
                 $middleware = $this->middlewares[$routeUrl] ?? false;
                 if ($middleware) {
                     $this->middlewares[$this->request->url()] = $middleware;
@@ -112,7 +125,16 @@ class Pexess extends Router
         return false;
     }
 
-    public function resolve()
+    public function handle(int $error_code, callable $handler)
+    {
+        $this->errorHandlers[$error_code] = $handler;
+    }
+
+    /**
+     * Resolve the route and throws NotFoundException if not found
+     * @throws NotFoundException|MethodNotAllowedException
+     */
+    private function resolve(): void
     {
         $handler = $this->getRouteHandler();
 
@@ -121,7 +143,22 @@ class Pexess extends Router
             $this->stack = $handler;
             $this->applyMiddlewares();
             call_user_func($this->stack, $this->request, $this->response);
-        } else $this->response->status(404)->send("<h1>Not Found</h1>");
+        } else throw new NotFoundException();
+    }
+
+    public function init(): void
+    {
+        try {
+            $this->resolve();
+        } catch (\Exception $e) {
+            $code = $e->getCode();
+            $message = $e->getMessage();
+            $errorHandler = $this->errorHandlers[$code] ?? false;
+            if ($errorHandler) {
+                $this->response->status($code);
+                call_user_func($errorHandler, $this->request, $this->response, $message);
+            } else $this->response->send($message);
+        }
     }
 
 }
