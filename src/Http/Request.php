@@ -24,12 +24,8 @@ class Request
 
     public function body(): array
     {
-        $body = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS) ?? [];
-        $json = json_decode(file_get_contents('php://input'), true);
-        if ($json ?? false) {
-            $body = filter_var_array($json, FILTER_SANITIZE_SPECIAL_CHARS);
-        }
-        return $body;
+        $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        return filter_var_array($body, FILTER_SANITIZE_SPECIAL_CHARS);
     }
 
     public function query(): array

@@ -41,16 +41,27 @@ class Pexess extends Router
     {
         if (array_key_exists("origin", $cors)) {
             $origin = $cors["origin"];
-            if (is_string($origin)) header("Access-Control-Allow-Origin: $origin");
+            if (is_array($origin)) {
+                $http_origin = $_SERVER["HTTP_ORIGIN"];
+                $origin = in_array($http_origin, $origin) ? $http_origin : $origin[0];
+            }
+            if (is_bool($origin)) {
+                $origin = $origin ? "*" : "";
+            }
+            header("Access-Control-Allow-Origin: $origin");
         }
         if (array_key_exists("headers", $cors)) {
             $headers = $cors["headers"];
-            if (is_bool($headers)) header("Access-Control-Allow-Headers: " . $headers ? "*" : "");
-            if (is_array($headers)) header("Access-Control-Allow-Headers: " . implode(", ", $headers));
+            if (is_bool($headers)) {
+                $headers = $headers ? "*" : "";
+            }
+            if (is_array($headers)) $headers = implode(", ", $headers);
+            header("Access-Control-Allow-Headers: " . $headers);
         }
         if (array_key_exists("methods", $cors)) {
             $methods = $cors["methods"];
-            if (is_array($methods)) header("Access-Control-Allow-Methods: " . implode(", ", $methods));
+            if (is_array($methods)) $methods = implode(", ", $methods);
+            header("Access-Control-Allow-Methods: " . $methods);
         }
         if (array_key_exists("maxAge", $cors)) {
             $maxAge = $cors["maxAge"];
