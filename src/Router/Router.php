@@ -26,6 +26,11 @@ class Router
         $this->routes[$url]['put'] = $callback;
     }
 
+    public function patch(string $url, \Closure|array $callback)
+    {
+        $this->routes[$url]['patch'] = $callback;
+    }
+
     public function delete(string $url, \Closure|array $callback)
     {
         $this->routes[$url]['delete'] = $callback;
