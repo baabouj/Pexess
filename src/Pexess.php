@@ -2,8 +2,9 @@
 
 namespace Pexess;
 
-use Pexess\exceptions\MethodNotAllowedException;
-use Pexess\exceptions\NotFoundException;
+use Pexess\Container\Container;
+use Pexess\Exceptions\MethodNotAllowedException;
+use Pexess\Exceptions\NotFoundException;
 use Pexess\Http\Request;
 use Pexess\Http\Response;
 use Pexess\Router\Router;
@@ -12,6 +13,8 @@ class Pexess extends Router
 {
     private Request $request;
     private Response $response;
+
+    private Container $container;
 
     private static ?Pexess $Application = null;
     public static array $routeParams;
@@ -22,6 +25,7 @@ class Pexess extends Router
     {
         $this->request = new Request();
         $this->response = new Response();
+        $this->container = new Container();
     }
 
     public static function Application(): Pexess
@@ -80,7 +84,7 @@ class Pexess extends Router
         foreach (array_reverse($this->middlewares["*"]) as $middleware) {
             $next = $this->stack;
             $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
-                if (is_string($middleware)) $middleware = [new $middleware, "handler"];
+                if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
                 return call_user_func($middleware, $req, $res, $next);
             };
         }
@@ -91,7 +95,7 @@ class Pexess extends Router
         foreach (array_reverse($this->middlewares[$this->request->url()] ?? []) as $middleware) {
             $next = $this->stack;
             $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
-                if (is_string($middleware)) $middleware = [new $middleware, "handler"];
+                if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
                 return call_user_func($middleware, $req, $res, $next);
             };
         }
@@ -105,8 +109,10 @@ class Pexess extends Router
         $route = $this->routes[$this->request->url()] ?? false;
         if ($route) {
             $handler = $route[$this->request->method()] ?? false;
-            if ($handler) return $handler;
-            throw new MethodNotAllowedException();
+
+            if (!$handler) throw new MethodNotAllowedException();
+
+            return $handler;
         }
 
         foreach ($this->routes as $route => $actions) {
@@ -141,20 +147,19 @@ class Pexess extends Router
         $this->errorHandlers[$error_code] = $handler;
     }
 
-    /**
-     * Resolve the route and throws NotFoundException if not found
-     * @throws NotFoundException|MethodNotAllowedException
-     */
     private function resolve(): void
     {
         $handler = $this->getRouteHandler();
 
-        if ($handler) {
-            if (is_array($handler)) $handler[0] = new $handler[0];
-            $this->stack = $handler;
-            $this->applyMiddlewares();
-            call_user_func($this->stack, $this->request, $this->response);
-        } else throw new NotFoundException();
+        if (!$handler) {
+            throw new NotFoundException();
+        }
+
+        if (is_array($handler)) $handler[0] = $this->container->get($handler[0]);
+        $this->stack = $handler;
+        $this->applyMiddlewares();
+        call_user_func($this->stack, $this->request, $this->response);
+
     }
 
     public function init(): void
@@ -165,10 +170,17 @@ class Pexess extends Router
             $code = $e->getCode();
             $message = $e->getMessage();
             $errorHandler = $this->errorHandlers[$code] ?? false;
-            if ($errorHandler) {
-                $this->response->status($code);
-                call_user_func($errorHandler, $this->request, $this->response, $message);
-            } else $this->response->send($message);
+
+            if (!$errorHandler) {
+                if ($this->request->method() == "options") {
+                    $code = 204;
+                    $message = "";
+                }
+                $this->response->status($code)->send($message);
+            }
+
+            $this->response->status($code);
+            call_user_func($errorHandler, $this->request, $this->response, $message);
         }
     }
 

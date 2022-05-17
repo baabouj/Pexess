@@ -1,6 +1,6 @@
 <?php
 
-namespace Pexess\exceptions;
+namespace Pexess\Exceptions;
 
 use Pexess\Helpers\StatusCodes;
 
