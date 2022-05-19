@@ -26,6 +26,9 @@ class Pexess extends Router
         $this->request = new Request();
         $this->response = new Response();
         $this->container = new Container();
+
+        $this->container->set(Request::class, fn() => $this->request);
+        $this->container->set(Response::class, fn() => $this->response);
     }
 
     public static function Application(): Pexess
@@ -101,9 +104,6 @@ class Pexess extends Router
         }
     }
 
-    /**
-     * @throws MethodNotAllowedException
-     */
     private function getRouteHandler()
     {
         $route = $this->routes[$this->request->url()] ?? false;
@@ -155,7 +155,12 @@ class Pexess extends Router
             throw new NotFoundException();
         }
 
-        if (is_array($handler)) $handler[0] = $this->container->get($handler[0]);
+        if (is_array($handler)) {
+            $handler = fn() => $this->container->make($this->container->get($handler[0]), $handler[1]);
+        } else {
+            $handler = fn() => $this->container->call($handler);
+        }
+
         $this->stack = $handler;
         $this->applyMiddlewares();
         call_user_func($this->stack, $this->request, $this->response);

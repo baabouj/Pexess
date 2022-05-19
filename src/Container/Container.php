@@ -50,16 +50,23 @@ class Container implements ContainerInterface
             return new $id();
         }
 
-        $dependencies = array_map(function (\ReflectionParameter $param) use ($id) {
+        $dependencies = $this->resolveParameters($parameters);
+
+        return $reflectionClass->newInstanceArgs($dependencies);
+    }
+
+    public function resolveParameters(array $parameters): array
+    {
+        return array_map(function (\ReflectionParameter $param) {
             $name = $param->getName();
             $type = $param->getType();
 
             if (!$type) {
-                throw new ContainerException("Failed to resolve Class $id because param $name is missing a type hint");
+                throw new ContainerException("Param $name is missing a type hint");
             }
 
             if ($type instanceof \ReflectionUnionType) {
-                throw new ContainerException("Failed to resolve Class $id because of union type for param $name");
+                throw new ContainerException("Failed to resolve because of union type for param $name");
             }
 
             if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
@@ -67,12 +74,30 @@ class Container implements ContainerInterface
             }
 
             throw new ContainerException(
-                'Failed to resolve class "' . $id . '" because invalid param "' . $name . '"'
+                'Invalid param "' . $name . '"'
             );
         },
             $parameters
         );
+    }
 
-        return $reflectionClass->newInstanceArgs($dependencies);
+    public function call(callable $callable)
+    {
+        $reflector = new \ReflectionFunction($callable);
+        $parameters = $reflector->getParameters();
+
+        $dependencies = $this->resolveParameters($parameters);
+
+        return $reflector->invoke(...$dependencies);
+    }
+
+    public function make(object $object, string $method)
+    {
+        $reflector = new \ReflectionMethod($object, $method);
+        $parameters = $reflector->getParameters();
+
+        $dependencies = $this->resolveParameters($parameters);
+
+        return $reflector->invoke($object, ...$dependencies);
     }
 }
