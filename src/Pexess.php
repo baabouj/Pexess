@@ -86,9 +86,9 @@ class Pexess extends Router
     {
         foreach (array_reverse($this->middlewares["*"]) as $middleware) {
             $next = $this->stack;
-            $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
+            $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
-                return call_user_func($middleware, $req, $res, $next);
+                return call_user_func($middleware, $this->request, $this->response, $next);
             };
         }
     }
@@ -97,9 +97,9 @@ class Pexess extends Router
     {
         foreach (array_reverse($this->middlewares[$this->request->url()] ?? []) as $middleware) {
             $next = $this->stack;
-            $this->stack = function (Request $req, Response $res) use ($next, $middleware) {
+            $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
-                return call_user_func($middleware, $req, $res, $next);
+                return call_user_func($middleware, $this->request, $this->response, $next);
             };
         }
     }
@@ -181,7 +181,7 @@ class Pexess extends Router
                     $code = 204;
                     $message = "";
                 }
-                $this->response->status($code)->send($message);
+                $this->response->status($code)->end($message);
             }
 
             $this->response->status($code);
