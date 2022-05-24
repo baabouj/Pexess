@@ -2,6 +2,8 @@
 
 namespace Pexess\Http;
 
+use Pexess\Exceptions\HttpException;
+
 class Response
 {
 
@@ -21,14 +23,9 @@ class Response
         exit($message);
     }
 
-    /**
-     * Exit with an error
-     * @throws \Exception
-     */
-    public function quit(int $status_code, string $message ="")
+    public function quit(string|array $message, int $statusCode)
     {
-        $this->status($status_code);
-        throw new \Exception($message,$status_code);
+        throw new HttpException($message, $statusCode);
     }
 
     public function redirect(string $url): void
@@ -36,9 +33,14 @@ class Response
         header("Location: $url");
     }
 
-    public function header(string $header) : void
+    public function header(string $header): void
     {
         header($header);
+    }
+
+    public function cookie(string $key, string $value, array $options = [])
+    {
+        setcookie($key, $value, $options);
     }
 
     public function json($data): never
