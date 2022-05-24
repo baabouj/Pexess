@@ -3,6 +3,8 @@
 namespace Pexess;
 
 use Pexess\Container\Container;
+use Pexess\Exceptions\HttpException;
+use Pexess\Exceptions\InternalServerErrorException;
 use Pexess\Exceptions\MethodNotAllowedException;
 use Pexess\Exceptions\NotFoundException;
 use Pexess\Http\Request;
@@ -18,8 +20,6 @@ class Pexess extends Router
 
     private static ?Pexess $Application = null;
     public static array $routeParams;
-
-    private array $errorHandlers = [];
 
     private function __construct()
     {
@@ -142,11 +142,6 @@ class Pexess extends Router
         return false;
     }
 
-    public function handle(int $error_code, callable $handler)
-    {
-        $this->errorHandlers[$error_code] = $handler;
-    }
-
     private function resolve(): void
     {
         $handler = $this->getRouteHandler();
@@ -172,20 +167,10 @@ class Pexess extends Router
         try {
             $this->resolve();
         } catch (\Exception $e) {
-            $code = $e->getCode();
-            $message = $e->getMessage();
-            $errorHandler = $this->errorHandlers[$code] ?? false;
-
-            if (!$errorHandler) {
-                if ($this->request->method() == "options") {
-                    $code = 204;
-                    $message = "";
-                }
-                $this->response->status($code)->end($message);
+            if (!($e instanceof HttpException)) {
+                $e = new InternalServerErrorException();
             }
-
-            $this->response->status($code);
-            call_user_func($errorHandler, $this->request, $this->response, $message);
+            $e->handle($this->response);
         }
     }
 

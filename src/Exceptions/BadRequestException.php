@@ -4,10 +4,10 @@ namespace Pexess\Exceptions;
 
 use Pexess\Helpers\StatusCodes;
 
-class NotFoundException extends HttpException
+class BadRequestException extends HttpException
 {
     public function __construct()
     {
-        parent::__construct("Not Found", StatusCodes::NOT_FOUND);
+        parent::__construct("Bad Request", StatusCodes::BAD_REQUEST);
     }
 }
