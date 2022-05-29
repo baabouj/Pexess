@@ -11,18 +11,24 @@ use Pexess\Http\Request;
 use Pexess\Http\Response;
 use Pexess\Router\Router;
 
-class Pexess extends Router
+class Pexess
 {
+    private Router $router;
+
     private Request $request;
     private Response $response;
 
     private Container $container;
 
     private static ?Pexess $Application = null;
+
+    protected \Closure|array|null $stack = null;
+
     public static array $routeParams;
 
     private function __construct()
     {
+        $this->router = Router::getInstance();
         $this->request = new Request();
         $this->response = new Response();
         $this->container = new Container();
@@ -39,43 +45,6 @@ class Pexess extends Router
         return self::$Application;
     }
 
-    public static function Router(): Router
-    {
-        return new Router();
-    }
-
-    public function cors(array $cors)
-    {
-        if (array_key_exists("origin", $cors)) {
-            $origin = $cors["origin"];
-            if (is_array($origin)) {
-                $http_origin = $_SERVER["HTTP_ORIGIN"];
-                $origin = in_array($http_origin, $origin) ? $http_origin : $origin[0];
-            }
-            if (is_bool($origin)) {
-                $origin = $origin ? "*" : "";
-            }
-            header("Access-Control-Allow-Origin: $origin");
-        }
-        if (array_key_exists("headers", $cors)) {
-            $headers = $cors["headers"];
-            if (is_bool($headers)) {
-                $headers = $headers ? "*" : "";
-            }
-            if (is_array($headers)) $headers = implode(", ", $headers);
-            header("Access-Control-Allow-Headers: " . $headers);
-        }
-        if (array_key_exists("methods", $cors)) {
-            $methods = $cors["methods"];
-            if (is_array($methods)) $methods = implode(", ", $methods);
-            header("Access-Control-Allow-Methods: " . $methods);
-        }
-        if (array_key_exists("maxAge", $cors)) {
-            $maxAge = $cors["maxAge"];
-            header("Access-Control-Allow-MaxAge: $maxAge");
-        }
-    }
-
     private function applyMiddlewares()
     {
         $this->applyRouteMiddlewares();
@@ -84,7 +53,7 @@ class Pexess extends Router
 
     private function applyGlobalMiddlewares()
     {
-        foreach (array_reverse($this->middlewares["*"]) as $middleware) {
+        foreach (array_reverse($this->router->middlewares["*"]["*"] ?? []) as $middleware) {
             $next = $this->stack;
             $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
@@ -95,7 +64,8 @@ class Pexess extends Router
 
     private function applyRouteMiddlewares()
     {
-        foreach (array_reverse($this->middlewares[$this->request->url()] ?? []) as $middleware) {
+        $middlewares = array_reverse($this->router->middlewares[$this->request->url()][$this->request->method()] ?? $this->router->middlewares[$this->request->url()]['*'] ?? []);
+        foreach ($middlewares as $middleware) {
             $next = $this->stack;
             $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
@@ -106,16 +76,16 @@ class Pexess extends Router
 
     private function getRouteHandler()
     {
-        $route = $this->routes[$this->request->url()] ?? false;
+        $route = $this->router->routes[$this->request->url()] ?? false;
         if ($route) {
-            $handler = $route[$this->request->method()] ?? false;
+            $handler = $route[$this->request->method()] ?? $route['*'] ?? false;
 
             if (!$handler) throw new MethodNotAllowedException();
 
             return $handler;
         }
 
-        foreach ($this->routes as $route => $actions) {
+        foreach ($this->router->routes as $route => $actions) {
             $routeUrl = $route;
             preg_match_all('/{[^}]+}/', $route, $keys);
             $route = preg_replace('/{[^}]+}/', '(.+)', $route);
@@ -130,11 +100,11 @@ class Pexess extends Router
                 }
                 if (empty($params)) continue;
                 self::$routeParams = $params;
-                $handler = $actions[$this->request->method()];
+                $handler = $actions[$this->request->method()] ?? $actions['*'];
                 if (!$handler) throw new MethodNotAllowedException();
-                $middleware = $this->middlewares[$routeUrl] ?? false;
+                $middleware = $this->router->middlewares[$routeUrl] ?? false;
                 if ($middleware) {
-                    $this->middlewares[$this->request->url()] = $middleware;
+                    $this->router->middlewares[$this->request->url()] = $middleware;
                 }
                 return $handler;
             }
@@ -158,8 +128,7 @@ class Pexess extends Router
 
         $this->stack = $handler;
         $this->applyMiddlewares();
-        call_user_func($this->stack, $this->request, $this->response);
-
+        call_user_func($this->stack);
     }
 
     public function init(): void
