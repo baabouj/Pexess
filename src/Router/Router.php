@@ -2,57 +2,139 @@
 
 namespace Pexess\Router;
 
+use Closure;
+
 class Router
 {
+    private static self $instance;
+
     public array $routes = [];
-    public array $middlewares = [
-        "*" => [] // Global middlewares
-    ];
+    public array $middlewares = [];
 
-    protected \Closure|array|null $stack = null;
+    protected string $prefix = '';
+    protected string $controller = '';
 
-    public function get(string $url, \Closure|array $callback)
+    private function __construct()
     {
-        $this->routes[$url]['get'] = $callback;
     }
 
-    public function post(string $url, \Closure|array $callback)
+    public static function getInstance(): self
     {
-        $this->routes[$url]['post'] = $callback;
-    }
-
-    public function put(string $url, \Closure|array $callback)
-    {
-        $this->routes[$url]['put'] = $callback;
-    }
-
-    public function patch(string $url, \Closure|array $callback)
-    {
-        $this->routes[$url]['patch'] = $callback;
-    }
-
-    public function delete(string $url, \Closure|array $callback)
-    {
-        $this->routes[$url]['delete'] = $callback;
-    }
-
-    public function route(string $route): Route
-    {
-        return new Route($route, $this);
-    }
-
-    public function group(string $route, Router $router)
-    {
-        foreach ($router->routes as $path => $handler) {
-            $this->routes[rtrim($route . $path, '/')] = $handler;
+        if (!isset(self::$instance)) {
+            self::$instance = new Router();
         }
-        foreach ($router->middlewares as $path => $middlewares) {
-            $this->middlewares[rtrim($route . $path, '/')] = [...$router->middlewares["*"], ...$middlewares];
-        }
+        return self::$instance;
     }
 
-    public function apply(callable|string ...$middlewares)
+    public function addRoute(string $path, string|array $method, callable|array|string $handler): Route
     {
-        array_push($this->middlewares["*"], ...$middlewares);
+        $router = self::getInstance();
+
+        if (!empty($this->controller) && is_string($handler)) {
+            $handler = [$this->controller, $handler];
+        }
+
+        if (is_array($method)) {
+            foreach ($method as $m) {
+                $router->routes[$path][strtolower($m)] = $handler;
+            }
+        } else {
+            $router->routes[$path][$method] = $handler;
+        }
+
+        return new Route($path, $method);
+    }
+
+    public static function get(string $path, callable|array|string $handler): Route
+    {
+        return self::on('get', $path, $handler);
+    }
+
+    public static function post(string $path, callable|array|string $handler): Route
+    {
+        return self::on('post', $path, $handler);
+    }
+
+    public static function put(string $path, callable|array|string $handler): Route
+    {
+        return self::on('put', $path, $handler);
+    }
+
+    public static function patch(string $path, callable|array|string $handler): Route
+    {
+        return self::on('patch', $path, $handler);
+    }
+
+    public static function delete(string $path, callable|array|string $handler): Route
+    {
+        return self::on('delete', $path, $handler);
+    }
+
+    public static function options(string $path, callable|array|string $handler): Route
+    {
+        return self::on('options', $path, $handler);
+    }
+
+    public static function any(string $path, callable|array|string $handler): Route
+    {
+        return self::on('*', $path, $handler);
+    }
+
+    public static function on(string|array $method, string $path, callable|array|string $handler): Route
+    {
+        $instance = self::getInstance();
+        if (!empty($instance->prefix)) {
+            $path = rtrim($instance->prefix . $path, '/');
+        }
+        return self::getInstance()->addRoute($path, $method, $handler);
+    }
+
+    public static function route(string $path): Route
+    {
+        $instance = self::getInstance();
+        if (!empty($instance->prefix)) {
+            $path = rtrim($instance->prefix . $path, '/');
+        }
+        return new Route($path);
+    }
+
+    public static function prefix(string $prefix, Closure $group)
+    {
+        $instance = self::getInstance();
+        $instance->prefix .= $prefix;
+        call_user_func($group);
+        $instance->prefix = substr($instance->prefix, 0, -strlen($prefix));
+    }
+
+    public static function controller(string $controller, Closure $group)
+    {
+        $instance = self::getInstance();
+        $instance->controller = $controller;
+        call_user_func($group);
+        $instance->controller = '';
+    }
+
+    public static function apply($middlewares): void
+    {
+        if (!is_array($middlewares)) {
+            $middlewares = func_get_args();
+        }
+
+        self::getInstance()->addMiddlewares($middlewares);
+    }
+
+    public function addMiddlewares(array $middlewares, string $path = '*', string|array $method = '*'): void
+    {
+        $instance = self::getInstance();
+        foreach ($middlewares as $middleware) {
+            if (is_array($method)) {
+                foreach ($method as $m) {
+                    $instance->middlewares[$path][$m][] = $middleware;
+                }
+                continue;
+            }
+            $instance->middlewares[$path][$method][] = $middleware;
+        }
+
     }
 }
