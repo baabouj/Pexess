@@ -2,24 +2,28 @@
 
 namespace Pexess\Database;
 
+use PDO;
+use PDOStatement;
+use Pexess\Orm\Connector;
+use Pexess\Orm\QueryBuilder;
+
 class Database
 {
-    private \PDO $pdo;
+    private PDO $pdo;
 
-    private \PDOStatement|false $statement;
+    private PDOStatement|false $statement;
 
-    private static ?Database $instance = null;
+    private static self $instance;
 
     private function __construct()
     {
-        $this->pdo = new \PDO($_ENV["DB_DSN"], $_ENV["DB_USER"], $_ENV["DB_PASSWORD"]);
-        $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $this->pdo = Connector::connect();
     }
 
-    public static function instance(): Database
+    public static function instance(): self
     {
-        if (!self::$instance) {
-            self::$instance = new Database();
+        if (!isset(self::$instance)) {
+            self::$instance = new self();
         }
         return self::$instance;
     }
@@ -29,18 +33,24 @@ class Database
         return new QueryBuilder($table);
     }
 
-    public function query($sql)
+    public function query(string $sql, array $bindings): static
     {
         $this->statement = $this->pdo->prepare($sql);
+        foreach ($bindings as $index => $binding) {
+            $this->bind($index + 1, $binding);
+        }
+        $this->execute();
+
+        return $this;
     }
 
     public function bind($parameter, $value, $type = null)
     {
         $type = match (is_null($type)) {
-            is_int($value) => \PDO::PARAM_INT,
-            is_bool($value) => \PDO::PARAM_BOOL,
-            is_null($value) => \PDO::PARAM_NULL,
-            default => \PDO::PARAM_STR,
+            is_int($value) => PDO::PARAM_INT,
+            is_bool($value) => PDO::PARAM_BOOL,
+            is_null($value) => PDO::PARAM_NULL,
+            default => PDO::PARAM_STR,
         };
         $this->statement->bindValue($parameter, $value, $type);
     }
@@ -50,20 +60,19 @@ class Database
         return $this->statement->execute();
     }
 
-    public function resultSet(): bool|array
+    public function all(): bool|array
     {
-        $this->execute();
-        return $this->statement->fetchAll(\PDO::FETCH_ASSOC);
+        return $this->statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function single()
+    public function first(): bool|array
     {
-        $this->execute();
-        return $this->statement->fetch(\PDO::FETCH_ASSOC);
+        return $this->statement->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function rowCount(): int
+    public function lastInsertedId(): bool|string
     {
-        return $this->statement->rowCount();
+        return $this->pdo->lastInsertId();
     }
+
 }
