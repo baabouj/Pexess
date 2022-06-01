@@ -3,7 +3,10 @@
 namespace Pexess\Container;
 
 use Pexess\Exceptions\ContainerException;
+use Pexess\Orm\Entity;
+use Pexess\Pexess;
 use Psr\Container\ContainerInterface;
+use ReflectionClass;
 
 class Container implements ContainerInterface
 {
@@ -32,13 +35,21 @@ class Container implements ContainerInterface
 
     public function resolve(string $id)
     {
-        $reflectionClass = new \ReflectionClass($id);
+        $reflectionClass = new ReflectionClass($id);
 
         if (!$reflectionClass->isInstantiable()) {
             throw new ContainerException("Class $id is not instantiable");
         }
 
         $constructor = $reflectionClass->getConstructor();
+
+        if (is_subclass_of($id, Entity::class) && isset(Pexess::$routeParams[strtolower($reflectionClass->getShortName())])) {
+            $entity = new $id();
+            $key = property_exists($entity, 'primaryKey') ? $entity->primaryKey : 'id';
+            $entity->bind($key, Pexess::$routeParams[strtolower($reflectionClass->getShortName())]);
+
+            return $entity;
+        }
 
         if (!$constructor) {
             return new $id();
