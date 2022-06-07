@@ -77,9 +77,30 @@ class Response
         header($header);
     }
 
+    public function headers(): array
+    {
+        $headers = [];
+        foreach (headers_list() as $header) {
+            [$key, $value] = explode(':', $header);
+            $headers[$key] = trim($value,' ');
+        }
+        return $headers;
+    }
+
+    public function removeHeader(string $header): void
+    {
+        header_remove($header);
+    }
+
     public function cookie(string $key, string $value, array $options = []): void
     {
         setcookie($key, $value, $options);
+    }
+
+    public function clearCookie(string $key, array $options = []): void
+    {
+        $options['expires'] = time() - 3600;
+        setcookie($key, '', $options);
     }
 
     public function json($data): void

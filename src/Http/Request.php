@@ -7,6 +7,7 @@ use Pexess\Validator\Validator;
 
 class Request
 {
+
     public function url(): string
     {
         $path = $_SERVER['REQUEST_URI'];
@@ -35,7 +36,7 @@ class Request
 
     public function validate(array $rules): bool|array
     {
-        return Validator::validate(array_merge($this->query(), $this->body()), $rules);
+        return Validator::validate($this->all(), $rules);
     }
 
     public function params(): array
@@ -43,8 +44,42 @@ class Request
         return Pexess::$routeParams ?? [];
     }
 
-    public function headers(): bool|array
+    public function headers(): array
     {
-        return array_change_key_case(getallheaders(), CASE_LOWER);
+        $headers = [];
+        foreach ($_SERVER as $key => $value) {
+            if (!str_starts_with($key, 'HTTP_')) {
+                continue;
+            }
+            $header = str_replace(' ', '_', str_replace('-', '_', strtolower(substr($key, 5))));
+            $headers[$header] = $value;
+        }
+        return $headers;
     }
+
+    public function cookies(): array
+    {
+        return $_COOKIE;
+    }
+
+    public function cookie(string $name)
+    {
+        return $_COOKIE[$name];
+    }
+
+    public function files(): array
+    {
+        return $_FILES;
+    }
+
+    public function all(): array
+    {
+        return array_merge($this->body(),$this->files());
+    }
+
+    public function file(string $name)
+    {
+        return $_FILES[$name];
+    }
+
 }

@@ -53,19 +53,18 @@ class Pexess
 
     private function applyGlobalMiddlewares()
     {
-        foreach (array_reverse($this->router->middlewares["*"]["*"] ?? []) as $middleware) {
-            $next = $this->stack;
-            $this->stack = function () use ($next, $middleware) {
-                if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
-                return call_user_func($middleware, $this->request, $this->response, $next);
-            };
-        }
+        $this->compose(array_reverse($this->router->middlewares["*"]["*"] ?? []));
     }
 
     private function applyRouteMiddlewares()
     {
         $middlewares = array_reverse($this->router->middlewares[$this->request->url()][$this->request->method()] ?? $this->router->middlewares[$this->request->url()]['*'] ?? []);
-        foreach ($middlewares as $middleware) {
+        $this->compose($middlewares);
+    }
+
+    private function compose(array $stack)
+    {
+        foreach ($stack as $middleware) {
             $next = $this->stack;
             $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
