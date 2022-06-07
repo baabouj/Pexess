@@ -1,28 +1,39 @@
 <?php
 
-namespace Pexess\Security;
+namespace Pexess\Middlewares;
+
+use Closure;
+use Pexess\Http\Request;
+use Pexess\Http\Response;
 
 class Cors
 {
-    public static function set(array $cors): void
+    public static function set(array $cors): Closure
     {
-        $cors['origin'] && self::origin($cors['origin']);
+        return function (Request $req, Response $res, Closure $next) use ($cors) {
 
-        $cors['headers'] && self::headers($cors['headers']);
+            isset($cors['origin']) && self::origin($cors['origin']);
 
-        $cors['methods'] && self::methods($cors['methods']);
+            isset($cors['headers']) && self::headers($cors['headers']);
 
-        $cors['maxAge'] && self::maxAge($cors['maxAge']);
+            isset($cors['methods']) && self::methods($cors['methods']);
 
-        $cors['exposeHeaders'] && self::exposeHeaders($cors['exposeHeaders']);
+            isset($cors['maxAge']) && self::maxAge($cors['maxAge']);
 
-        $cors['credentials'] && self::credentials($cors['credentials']);
+            isset($cors['exposeHeaders']) && self::exposeHeaders($cors['exposeHeaders']);
+
+            isset($cors['credentials']) && self::credentials($cors['credentials']);
+
+            $next();
+        };
     }
 
     public static function origin($origin): void
     {
         if (is_bool($origin)) {
-            $origin && header("Access-Control-Allow-Origin: *");
+            $origin ?
+                header("Access-Control-Allow-Origin: *") :
+                header_remove("Access-Control-Allow-Origin");
             return;
         }
 
@@ -41,7 +52,9 @@ class Cors
     public static function headers($headers): void
     {
         if (is_bool($headers)) {
-            $headers && header("Access-Control-Allow-Headers: *");
+            $headers ?
+                header("Access-Control-Allow-Headers: *") :
+                header_remove("Access-Control-Allow-Headers");
             return;
         }
 
@@ -73,7 +86,9 @@ class Cors
     public static function exposeHeaders($exposeHeaders): void
     {
         if (is_bool($exposeHeaders)) {
-            $exposeHeaders && header("Access-Control-Expose-Headers: *");
+            $exposeHeaders ?
+                header("Access-Control-Expose-Headers: *") :
+                header_remove("Access-Control-Expose-Headers");
             return;
         }
 
@@ -88,6 +103,8 @@ class Cors
 
     public static function credentials(bool $allowCredentials = true): void
     {
-        $allowCredentials && header("Access-Control-Allow-Credentials: true");
+        $allowCredentials ?
+            header("Access-Control-Allow-Credentials: true") :
+            header_remove("Access-Control-Allow-Credentials");
     }
 }
