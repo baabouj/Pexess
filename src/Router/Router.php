@@ -36,10 +36,10 @@ class Router
 
         if (is_array($method)) {
             foreach ($method as $m) {
-                $router->routes[$path][strtolower($m)] = $handler;
+                $router->routes[$path][strtolower($m)] = [...$this->middlewares, $handler];
             }
         } else {
-            $router->routes[$path][$method] = $handler;
+            $router->routes[$path][$method] = [...$this->middlewares, $handler];
         }
 
         return new Route($path, $method);
@@ -123,18 +123,9 @@ class Router
         self::getInstance()->addMiddlewares($middlewares);
     }
 
-    public function addMiddlewares(array $middlewares, string $path = '*', string|array $method = '*'): void
+    public function addMiddlewares(array $middlewares): void
     {
         $instance = self::getInstance();
-        foreach ($middlewares as $middleware) {
-            if (is_array($method)) {
-                foreach ($method as $m) {
-                    $instance->middlewares[$path][$m][] = $middleware;
-                }
-                continue;
-            }
-            $instance->middlewares[$path][$method][] = $middleware;
-        }
-
+        array_push($instance->middlewares, ...$middlewares);
     }
 }
