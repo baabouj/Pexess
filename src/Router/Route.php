@@ -16,42 +16,49 @@ class Route
     public function get(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'get', $handler);
+        is_array($this->method) ? $this->method[] = 'get' : $this->method = ['get'];
         return $this;
     }
 
     public function post(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'post', $handler);
+        is_array($this->method) ? $this->method[] = 'post' : $this->method = ['post'];
         return $this;
     }
 
     public function put(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'put', $handler);
+        is_array($this->method) ? $this->method[] = 'put' : $this->method = ['put'];
         return $this;
     }
 
     public function patch(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'patch', $handler);
+        is_array($this->method) ? $this->method[] = 'patch' : $this->method = ['patch'];
         return $this;
     }
 
     public function delete(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'delete', $handler);
+        is_array($this->method) ? $this->method[] = 'delete' : $this->method = ['delete'];
         return $this;
     }
 
     public function options(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, 'options', $handler);
+        is_array($this->method) ? $this->method[] = 'delete' : $this->method = ['delete'];
         return $this;
     }
 
     public function any(callable|array|string $handler): static
     {
         Router::getInstance()->addRoute($this->route, '*', $handler);
+        is_array($this->method) ? $this->method[] = '*' : $this->method = ['*'];
         return $this;
     }
 
@@ -66,6 +73,17 @@ class Route
         if (!is_array($middlewares)) {
             $middlewares = func_get_args();
         }
-        Router::getInstance()->addMiddlewares($middlewares, $this->route, $this->method);
+
+        $router = Router::getInstance();
+        if (is_array($this->method)) {
+            foreach ($this->method as $method) {
+                $handler = array_pop($router->routes[$this->route][$method]);
+                $router->routes[$this->route][$method] = [...$router->middlewares, ...$middlewares, $handler];
+            }
+            return;
+        }
+
+        $handler = array_pop($router->routes[$this->route][$this->method]);
+        $router->routes[$this->route][$this->method] = [...$router->middlewares, ...$middlewares, $handler];
     }
 }

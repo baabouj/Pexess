@@ -9,7 +9,6 @@ use Pexess\Validator\Validator;
 
 abstract class Entity extends QueryBuilder
 {
-
     public function __construct()
     {
         parent::__construct($this->table);
@@ -28,20 +27,28 @@ abstract class Entity extends QueryBuilder
         return $this;
     }
 
-    public function guard(string $property)
+    public function guard(string $property): self
     {
+        if (func_num_args() > 1) {
+            foreach (func_get_args() as $prop) {
+                $this->guard[] = $prop;
+            }
+            return $this;
+        }
         $this->guard[] = $property;
+        return $this;
     }
 
-    public function unguard(string $property)
+    public function unguard(string $property): self
     {
-        unset($this->guard[$property]);
-        foreach ($this->guard as $idx => $prop) {
-            if ($prop == $property) {
-                unset($this->guard[$idx]);
-                break;
+        if (func_num_args() > 1) {
+            foreach (func_get_args() as $prop) {
+                unset($this->guard[$prop]);
             }
+            return $this;
         }
+        unset($this->guard[$property]);
+        return $this;
     }
 
     private function getPrimaryKey(): string
@@ -62,7 +69,6 @@ abstract class Entity extends QueryBuilder
 
     public function save()
     {
-        $this->validate();
         method_exists($this, 'beforeSave') && $this->beforeSave($this);
 
         $properties = [];
@@ -81,11 +87,11 @@ abstract class Entity extends QueryBuilder
                 ]
             ]);
         } else {
-            $user = $this->create([
+            $entity = $this->create([
                 'data' => $properties
             ]);
 
-            $this->fill($user);
+            $this->fill($entity);
         }
 
         method_exists($this, 'afterSave') && $this->afterSave($this);
@@ -101,7 +107,7 @@ abstract class Entity extends QueryBuilder
         ]);
     }
 
-    public function bind(string $key, mixed $value): self|null
+    public function findWhere(string $key, mixed $value): self|null
     {
         $entity = $this->findUnique([
             'where' => [

@@ -2,11 +2,13 @@
 
 namespace Pexess;
 
+use Closure;
 use Pexess\Container\Container;
 use Pexess\Exceptions\HttpException;
 use Pexess\Exceptions\InternalServerErrorException;
 use Pexess\Exceptions\MethodNotAllowedException;
 use Pexess\Exceptions\NotFoundException;
+use Pexess\Helpers\StatusCodes;
 use Pexess\Http\Request;
 use Pexess\Http\Response;
 use Pexess\Router\Router;
@@ -22,7 +24,7 @@ class Pexess
 
     private static ?Pexess $Application = null;
 
-    protected \Closure|array|null $stack = null;
+    protected Closure|array|null $stack = null;
 
     public static array $routeParams;
 
@@ -45,26 +47,9 @@ class Pexess
         return self::$Application;
     }
 
-    private function applyMiddlewares()
-    {
-        $this->applyRouteMiddlewares();
-        $this->applyGlobalMiddlewares();
-    }
-
-    private function applyGlobalMiddlewares()
-    {
-        $this->compose(array_reverse($this->router->middlewares["*"]["*"] ?? []));
-    }
-
-    private function applyRouteMiddlewares()
-    {
-        $middlewares = array_reverse($this->router->middlewares[$this->request->url()][$this->request->method()] ?? $this->router->middlewares[$this->request->url()]['*'] ?? []);
-        $this->compose($middlewares);
-    }
-
     private function compose(array $stack)
     {
-        foreach ($stack as $middleware) {
+        foreach (array_reverse($stack) as $middleware) {
             $next = $this->stack;
             $this->stack = function () use ($next, $middleware) {
                 if (is_string($middleware)) $middleware = [$this->container->get($middleware), "handler"];
@@ -73,13 +58,14 @@ class Pexess
         }
     }
 
-    private function getRouteHandler()
+    private function getRouteHandlers()
     {
         $route = $this->router->routes[$this->request->url()] ?? false;
+
         if ($route) {
             $handler = $route[$this->request->method()] ?? $route['*'] ?? false;
 
-            if (!$handler) throw new MethodNotAllowedException();
+            $this->response->throwIf(!$handler, MethodNotAllowedException::class);
 
             return $handler;
         }
@@ -100,7 +86,7 @@ class Pexess
                 if (empty($params)) continue;
                 self::$routeParams = $params;
                 $handler = $actions[$this->request->method()] ?? $actions['*'];
-                if (!$handler) throw new MethodNotAllowedException();
+                $this->response->throwIf(!$handler, MethodNotAllowedException::class);
                 $middleware = $this->router->middlewares[$routeUrl] ?? false;
                 if ($middleware) {
                     $this->router->middlewares[$this->request->url()] = $middleware;
@@ -113,11 +99,11 @@ class Pexess
 
     private function resolve(): void
     {
-        $handler = $this->getRouteHandler();
+        $handlers = $this->getRouteHandlers();
 
-        if (!$handler) {
-            throw new NotFoundException();
-        }
+        $this->response->throwIf(!$handlers, NotFoundException::class);
+
+        $handler = array_pop($handlers);
 
         if (is_array($handler)) {
             $handler = fn() => $this->container->make($this->container->get($handler[0]), $handler[1]);
@@ -125,8 +111,10 @@ class Pexess
             $handler = fn() => $this->container->call($handler);
         }
 
-        $this->stack = $handler;
-        $this->applyMiddlewares();
+        $handlers[] = $handler;
+
+        $this->compose($handlers);
+
         call_user_func($this->stack);
     }
 
@@ -135,6 +123,9 @@ class Pexess
         try {
             $this->resolve();
         } catch (\Exception $e) {
+            if ($this->request->method() == "options") {
+                $this->response->status(StatusCodes::NO_CONTENT)->end();
+            }
             if (!($e instanceof HttpException)) {
                 $e = new InternalServerErrorException();
             }

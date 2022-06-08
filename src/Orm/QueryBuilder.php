@@ -19,7 +19,7 @@ class QueryBuilder
         $this->table = $table;
     }
 
-    public function create(array $options): bool|array
+    public function create(array $options): bool|object
     {
         $db = Database::instance();
         $builder = new InsertQuery();
@@ -40,7 +40,7 @@ class QueryBuilder
         ]);
     }
 
-    public function update(array $options): bool|array
+    public function update(array $options): bool|object
     {
         $builder = new UpdateQuery();
 
@@ -57,7 +57,7 @@ class QueryBuilder
         ]);
     }
 
-    public function delete(array $options): bool|array
+    public function delete(array $options): bool|object
     {
         $builder = new DeleteQuery();
 
@@ -73,7 +73,7 @@ class QueryBuilder
         return $record;
     }
 
-    public function findUnique(array $options): bool|array
+    public function findUnique(array $options): bool|object
     {
         $builder = new SelectQuery();
         $builder->from($this->table);
@@ -90,7 +90,9 @@ class QueryBuilder
 
         $this->db->query($query, $bindings);
 
-        return $this->db->first();
+        $class = is_subclass_of(get_called_class(),Entity::class) ? get_called_class() : 'stdClass';
+
+        return $this->db->first($class);
     }
 
     public function findMany(array $options = []): bool|array
@@ -125,7 +127,9 @@ class QueryBuilder
 
         $this->db->query($query, $bindings);
 
-        return $this->db->all();
+        $class = is_subclass_of(get_called_class(),Entity::class) ? get_called_class() : 'stdClass';
+
+        return $this->db->all($class);
     }
 
     public function count(array $options = []): int|bool

@@ -28,6 +28,13 @@ class Cors
         };
     }
 
+    public static function enable()
+    {
+        self::origin(true);
+        self::headers(true);
+        self::methods('*');
+    }
+
     public static function origin($origin): void
     {
         if (is_bool($origin)) {
