@@ -60,14 +60,14 @@ class Database
         return $this->statement->execute();
     }
 
-    public function all(): bool|array
+    public function all(string $class = 'stdClass'): bool|array
     {
-        return $this->statement->fetchAll(PDO::FETCH_ASSOC);
+        return $this->statement->fetchAll(PDO::FETCH_CLASS, $class);
     }
 
-    public function first(): bool|array
+    public function first(string $class = 'stdClass'): bool|object
     {
-        return $this->statement->fetch(PDO::FETCH_ASSOC);
+        return $this->statement->fetchObject($class);
     }
 
     public function lastInsertedId(): bool|string
