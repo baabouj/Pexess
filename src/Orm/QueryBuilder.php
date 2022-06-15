@@ -145,7 +145,7 @@ class QueryBuilder
 
         [$query, $bindings] = [$builder->getQuery(), $builder->getBindings()];
 
-        return $this->db->query($query, $bindings)->first()['count'] ?? false;
+        return $this->db->query($query, $bindings)->first()->count ?? false;
     }
 
     public function groupBy(array $options)
