@@ -120,7 +120,7 @@ class QueryBuilder
         }
 
         if (isset($options['skip'])) {
-            $builder->skip($options['skip']);
+            $builder->skip($options['take']);
         }
 
         [$query, $bindings] = [$builder->getQuery(), $builder->getBindings()];
