@@ -17,7 +17,7 @@ abstract class Entity extends QueryBuilder
     public function fill(array|object $data): self
     {
         if (is_object($data)) {
-            $data = get_object_vars($data);
+            $data = $this->getPublicProperties($data);
         }
 
         foreach ($data as $property => $value) {
@@ -29,25 +29,20 @@ abstract class Entity extends QueryBuilder
 
     public function guard(string $property): self
     {
-        if (func_num_args() > 1) {
-            foreach (func_get_args() as $prop) {
-                $this->guard[] = $prop;
-            }
-            return $this;
+        foreach (func_get_args() as $prop) {
+            $this->guard[] = $prop;
         }
-        $this->guard[] = $property;
         return $this;
     }
 
     public function unguard(string $property): self
     {
-        if (func_num_args() > 1) {
-            foreach (func_get_args() as $prop) {
-                unset($this->guard[$prop]);
+        $property = func_get_args();
+        foreach ($this->guard as $idx => $prop) {
+            if (in_array($prop, $property)) {
+                unset($this->guard[$idx]);
             }
-            return $this;
         }
-        unset($this->guard[$property]);
         return $this;
     }
 
@@ -56,26 +51,22 @@ abstract class Entity extends QueryBuilder
         return property_exists($this, 'primaryKey') ? $this->primarykey : 'id';
     }
 
-    private function getPublicProperties(): array
+    private function getPublicProperties(object $object): array
     {
         $me = new class {
-            function getProperties($object): array
+            function getProperties(object $object): array
             {
                 return get_object_vars($object);
             }
         };
-        return array_keys($me->getProperties($this));
+        return $me->getProperties($object);
     }
 
     public function save()
     {
         method_exists($this, 'beforeSave') && $this->beforeSave($this);
 
-        $properties = [];
-
-        foreach ($this->getPublicProperties() as $property) {
-            $properties[$property] = $this->{$property};
-        }
+        $properties = $this->getPublicProperties($this);
 
         $primaryKey = $this->getPrimaryKey();
 
